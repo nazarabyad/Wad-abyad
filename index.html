@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#083a52"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>الحاج مقام</title>
+<style>
+:root{--bg:#083a52;--card:#0d4f6e;--tx:#fff;--mu:#a9cfe0;--ac:#f5e11a;--ac2:#0a2f42;--bd:#1b6a8c;--ok:#7be0a4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,Tahoma,sans-serif;max-width:520px;margin-inline:auto;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 40px}
+h2{font-size:16px;margin:16px 0 8px}button,input{font:inherit}
+button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:10px;border-radius:10px;cursor:pointer}
+button.p{background:var(--ac);color:var(--ac2);border-color:var(--ac);font-weight:700}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}.q{display:flex;align-items:center;gap:8px}.q button{width:34px;padding:6px}
+input{width:100%;padding:10px;margin:4px 0;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
+.mu{color:var(--mu);font-size:13px}.tag{padding:2px 10px;border-radius:99px;background:var(--bd);font-size:13px}.ok{color:var(--ok)}a{color:var(--ac)}.full{width:100%}
+#toast{position:fixed;top:10px;inset-inline:12px;max-width:496px;margin-inline:auto;background:var(--ac);color:var(--ac2);padding:12px;border-radius:12px;display:none;z-index:9}
+header{display:flex;align-items:center;gap:12px}header img{width:72px;height:72px;border-radius:50%;border:2px solid var(--ac)}
+</style></head><body>
+<div id="toast"></div>
+<header><img src="icons/icon-192.png" alt=""><div><b style="font-size:22px">الحاج مقام</b><div style="color:var(--ac)">مشويات و مندي</div></div></header>
+<div id="app"></div>
+<script type="module">
+import {firebaseConfig} from "./firebase-config.js";
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getFirestore,collection,addDoc,doc,onSnapshot,updateDoc,query,orderBy,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+const MENU=[{n:'بيتزا',e:'🍕',o:[['صغير',5000],['وسط',8000],['كبير',12000]]},{n:'كفتة',e:'🍢',o:[['لحمة',6000],['فراخ',5000]]},{n:'مندي',e:'🍛',o:[['لحمة',9000],['فراخ',7000]]}];
+const ST={new:'بانتظار تأكيد المطعم',confirmed:'تم التأكيد - بانتظار الدفع',paid:'تم الدفع - جاري التحضير',out:'خرج للتوصيل 🛵',done:'تم التسليم ✅'};
+const $=i=>document.getElementById(i),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const S={cart:{},name:'',phone:'',loc:null,pay:'بنكك',ref:'',mine:null,orders:[]};
+function toast(m){const t=$('toast');t.textContent='🔔 '+m;t.style.display='block';clearTimeout(t.h);t.h=setTimeout(()=>t.style.display='none',5000);
+try{if(Notification.permission==='granted')new Notification('الحاج مقام',{body:m})}catch(e){}
+try{const a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o.frequency.value=880;o.start();o.stop(a.currentTime+.3)}catch(e){}}
+const total=c=>MENU.reduce((s,m,i)=>s+m.o.reduce((t,o,j)=>t+(c[i+'-'+j]||0)*o[1],0),0);
+const items=c=>MENU.flatMap((m,i)=>m.o.flatMap((o,j)=>c[i+'-'+j]?[c[i+'-'+j]+'× '+m.n+' '+o[0]]:[]));
+const W=window;
+W.chg=(k,d)=>{S.cart[k]=Math.max(0,(S.cart[k]||0)+d);draw()};
+W.getLoc=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{S.loc={lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)};draw()},()=>toast('فعّل الـ GPS وحاول تاني')):toast('الجهاز لا يدعم الموقع');
+W.send=async()=>{if(!total(S.cart))return toast('اختار أصناف أول');if(!S.name||!S.phone)return toast('اكتب الاسم والهاتف');if(!S.loc)return toast('حدد موقعك');
+try{Notification.requestPermission()}catch(e){}
+const r=await addDoc(collection(db,'orders'),{name:S.name,phone:S.phone,loc:S.loc,items:items(S.cart),total:total(S.cart),st:'new',pay:'',ref:'',created:serverTimestamp()});
+localStorage.setItem('oid',r.id);S.cart={};watch(r.id)};
+W.payNow=()=>updateDoc(doc(db,'orders',localStorage.oid),{st:'paid',pay:S.pay,ref:S.ref});
+W.setSt=(id,st)=>updateDoc(doc(db,'orders',id),{st});
+W.login=()=>signInWithEmailAndPassword(auth,$('em').value,$('pw').value).catch(()=>toast('بيانات الدخول غلط'));
+let last=null;
+function watch(id){onSnapshot(doc(db,'orders',id),s=>{if(!s.exists())return;const o={id:s.id,...s.data()};if(last&&last!==o.st)toast(ST[o.st]);last=o.st;S.mine=o;draw()})}
+function cust(){let h='<h2>القائمة</h2>';
+MENU.forEach((m,i)=>{h+=`<div class="card"><b>${m.e} ${m.n}</b>`;m.o.forEach((o,j)=>{const k=i+'-'+j;h+=`<div class="row"><span>${o[0]} <span class="mu">${o[1]} ج</span></span><span class="q"><button onclick="chg('${k}',-1)">−</button><b>${S.cart[k]||0}</b><button onclick="chg('${k}',1)">+</button></span></div>`});h+='</div>'});
+h+=`<div class="card"><input placeholder="الاسم" value="${esc(S.name)}" oninput="S.name=this.value"><input type="tel" placeholder="رقم الهاتف" value="${esc(S.phone)}" oninput="S.phone=this.value"><button class="full" onclick="getLoc()">📍 ${S.loc?'تم تحديد موقعك ✓':'حدد موقعي'}</button><div class="row"><b>الإجمالي</b><b>${total(S.cart)} ج</b></div><button class="p full" onclick="send()">إرسال الطلب</button></div>`;
+const o=S.mine;if(o){h+=`<h2>طلبك</h2><div class="card"><span class="tag">${ST[o.st]}</span><div class="mu" style="margin:8px 0">${o.items.map(esc).join(' • ')}</div><b>${o.total} ج</b>`;
+if(o.st==='confirmed')h+=`<div class="row"><button class="${S.pay==='بنكك'?'p':''}" style="flex:1" onclick="S.pay='بنكك';draw()">بنكك</button><button class="${S.pay!=='بنكك'?'p':''}" style="flex:1" onclick="S.pay='كاش عند الاستلام';draw()">كاش</button></div>${S.pay==='بنكك'?'<input placeholder="رقم العملية (اختياري)" oninput="S.ref=this.value">':''}<button class="p full" onclick="payNow()">ادفع الآن</button>`;
+if(o.st==='done')h+='<button class="full" onclick="localStorage.removeItem(\'oid\');S.mine=null;last=null;draw()">طلب جديد</button>';h+='</div>'}return h}
+function adm(u){if(!u)return '<h2>دخول المطعم</h2><div class="card"><input id="em" type="email" placeholder="الإيميل"><input id="pw" type="password" placeholder="كلمة السر"><button class="p full" onclick="login()">دخول</button></div>';
+let h='<div class="row"><h2>طلبات الزبائن</h2><button onclick="out()">خروج</button></div>';if(!S.orders.length)h+='<div class="mu">ما في طلبات لسه</div>';
+S.orders.forEach(o=>{h+=`<div class="card"><div class="row"><b>${esc(o.name)}</b><span class="tag">${ST[o.st]}</span></div><div class="mu">📞 <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a></div><div style="margin:6px 0">${o.items.map(esc).join(' • ')}</div><div class="row"><b>${o.total} ج</b><a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${+o.loc.lat},${+o.loc.lng}">📍 موقع الزبون</a></div>${o.pay?`<div class="ok">💰 ${esc(o.pay)} ${esc(o.ref)}</div>`:''}`;
+const nx={new:['confirmed','تأكيد الطلب'],paid:['out','خرج للتوصيل'],out:['done','تم التسليم']}[o.st];if(nx)h+=`<button class="p full" onclick="setSt('${o.id}','${nx[0]}')">${nx[1]}</button>`;h+='</div>'});return h}
+W.out=()=>signOut(auth);W.S=S;W.draw=draw;
+function draw(){const a=$('app');if(location.hash==='#admin')a.innerHTML=adm(auth.currentUser);else a.innerHTML=cust()}
+if(location.hash==='#admin'){let first=true;onAuthStateChanged(auth,u=>{draw();if(!u)return;
+onSnapshot(query(collection(db,'orders'),orderBy('created','desc')),s=>{if(!first)s.docChanges().forEach(c=>{if(c.type==='added')toast('طلب جديد من '+c.doc.data().name);if(c.type==='modified'&&c.doc.data().st==='paid')toast('الزبون دفع: '+c.doc.data().name)});first=false;S.orders=s.docs.map(d=>({id:d.id,...d.data()}));draw()})})}
+else{if(localStorage.oid)watch(localStorage.oid);draw()}
+</script></body></html>
