@@ -37,18 +37,19 @@ const o={id:s.id,...s.data()};if(last&&last!==o.st)toast(o.st==='rejected'?'تع
 function cust(){let h='<h2>القائمة</h2>';
 MENU.forEach((m,i)=>{h+=`<div class="card"><b>${esc(m.e)} ${esc(m.n)}</b>`;m.o.forEach((o,j)=>{const k=i+'-'+j;h+=`<div class="row"><span>${esc(o[0])} <span class="mu">${o[1]} ج</span></span><span class="q"><button onclick="chg('${k}',-1)">−</button><b>${S.cart[k]||0}</b><button onclick="chg('${k}',1)">+</button></span></div>`});h+='</div>'});
 h+=`<div class="card"><input placeholder="الاسم" value="${esc(S.name)}" oninput="S.name=this.value"><input type="tel" placeholder="رقم الهاتف" value="${esc(S.phone)}" oninput="S.phone=this.value"><button class="full" onclick="getLoc()">📍 ${S.loc?'تم تحديد موقعك ✓':'حدد موقعي'}</button><div class="row"><b>الإجمالي</b><b>${total(S.cart)} ج</b></div><button class="p full" onclick="send()">إرسال الطلب</button></div>`;
-const o=S.mine;if(o){h+=`<h2>طلبك</h2><div class="card"><span class="tag">${ST[o.st]}</span><div class="mu" style="margin:8px 0">${o.items.map(esc).join(' • ')}</div><b>${o.total} ج</b>`;
+const o=S.mine;if(o){h+=`<h2>طلبك</h2><div class="card"><span class="tag">${ST[o.st]}</span><div class="mu" style="margin-top:6px">🕒 ${when(o)}</div><div class="mu" style="margin:8px 0">${o.items.map(esc).join(' • ')}</div><b>${o.total} ج</b>`;
 if(o.st==='confirmed')h+=`<div class="card" style="background:var(--bg)"><b>الدفع عبر ${esc(PAY.bank)}</b><div class="mu" style="margin:6px 0">حوّل <b>${o.total} ج</b> إلى الحساب:</div><div class="row"><b style="font-size:18px;direction:ltr">${esc(PAY.acc)}</b><button onclick="copyAcc()">نسخ</button></div><div class="mu">${esc(PAY.name)}</div></div>${o.payNote?`<div style="color:#ff9d9d;margin:6px 0">⚠️ ${esc(o.payNote)}</div>`:''}<label style="display:block;text-align:center;border:1px dashed var(--ac);border-radius:10px;padding:12px;margin:6px 0;cursor:pointer">📎 ${S.rc?'تغيير صورة الإشعار':'رفع صورة إشعار التحويل'}<input type="file" accept="image/*" style="display:none" onchange="pickRc(this)"></label>${S.rc?`<img src="${S.rc}" style="max-width:100%;max-height:220px;border-radius:10px;display:block;margin:6px auto">`:''}<button class="p full" onclick="payNow()">تأكيد الدفع</button>`;
 if(o.st==='rejected')h+=`<div style="margin:8px 0;color:#ff9d9d">❌ ${esc(o.reason||'تعذر تنفيذ الطلب')}</div>`;
 if(o.st==='adjust'){const g=(o.removed||[]).slice(-1)[0]||'';h+=`<div style="margin:8px 0;color:var(--ac)">⚠️ الصنف (${esc(g)}) غير متوفر حالياً.<br>هل تريد الاستمرار لباقي الطلب؟ الإجمالي الجديد: <b>${o.total} ج</b></div><div class="row"><button class="p" style="flex:1" onclick="answer(true)">نعم، استمر</button><button style="flex:1" onclick="answer(false)">لا، إلغاء الطلب</button></div>`}
 if(['done','rejected','cancelled'].includes(o.st))h+='<button class="full" onclick="newOrder()">طلب جديد</button>';h+='</div>'}return h}
 /* ---------- مشترك للمطعم والمندوب ---------- */
-const head=o=>`<div class="row"><b>${esc(o.name)}</b><span class="tag">${ST[o.st]}</span></div>`;
+const when=o=>{const t=o.created&&o.created.toDate?o.created.toDate():null;return t?t.toLocaleString('ar-EG-u-nu-latn',{dateStyle:'medium',timeStyle:'short'}):'الآن'};
+const head=o=>`<div class="row"><b>${esc(o.name)}</b><span class="tag">${ST[o.st]}</span></div><div class="mu">🕒 ${when(o)}</div>`;
 const info=o=>`<div class="mu">📞 <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a></div><div style="margin:6px 0">${o.items.map(esc).join(' • ')}</div><div class="row"><b>${o.total} ج</b><a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${+o.loc.lat},${+o.loc.lng}">📍 موقع الزبون</a></div>`;
 const login=t=>`<h2>${t}</h2><div class="card"><input id="em" type="email" placeholder="الإيميل"><input id="pw" type="password" placeholder="كلمة السر"><button class="p full" onclick="doLogin()">دخول</button></div>`;
 W.doLogin=()=>signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value).catch(()=>toast('بيانات الدخول غلط'));
 W.out=()=>signOut(auth);
-W.setSt=(id,st)=>updateDoc(doc(db,'orders',id),{st});
+W.setSt=async(id,st)=>{try{await updateDoc(doc(db,'orders',id),{st});if(st==='done')toast('تم تسجيل التوصيل ✅')}catch(e){toast('تعذر تحديث الطلب: '+(e.code||e.message))}};
 /* ---------- المندوب ---------- */
 function drv(u){if(!u)return login('دخول المندوب');let h='<div class="row"><h2>طلبات التوصيل</h2><button onclick="out()">خروج</button></div>';
 if(!S.orders.length)h+='<div class="mu">ما في طلبات توصيل حالياً</div>';
@@ -90,7 +91,7 @@ if(o.st==='new'){h+='<div class="mu" style="margin:10px 0 4px">صنف غير م�
 h+=`<button class="full sm rm" style="margin-top:8px" onclick="delOrder('${o.id}')">🗑 مسح الطلب من القائمة</button></div>`});return h}
 /* ---------- تشغيل ---------- */
 W.draw=draw;function draw(){const u=auth.currentUser;R=u?role(u):null;
-$('app').innerHTML=!staff?cust():!u?login('تسجيل الدخول'):R==='a'?adm(u):R==='d'?drv(u):'<div class="card">هذا الحساب غير مصرح له بالدخول<br><button class="full" style="margin-top:8px" onclick="out()">خروج</button></div>'}
+$('app').innerHTML=(!staff?cust():!u?login('تسجيل الدخول'):R==='a'?adm(u):R==='d'?drv(u):'<div class="card">هذا الحساب غير مصرح له بالدخول<br><button class="full" style="margin-top:8px" onclick="out()">خروج</button></div>')+'<div class="mu" style="text-align:center;margin-top:24px;font-size:11px">v6 · '+(staff?(R||'-'):'c')+'</div>'}
 onSnapshot(doc(db,'config','menu'),s=>{if(s.exists()&&s.data().cats){MENU=s.data().cats.map(c=>({n:c.n,e:c.e||'',o:(c.o||[]).map(x=>[x.n,x.p])}));if(!staff)S.cart={}}redraw()},()=>{});
 if(staff){let first=true,ou;onAuthStateChanged(auth,u=>{if(ou){ou();ou=null}first=true;S.orders=[];draw();if(!u||R==='x')return;
 const q=R==='d'?query(collection(db,'orders'),where('st','in',['ready','out'])):query(collection(db,'orders'),orderBy('created','desc'));
