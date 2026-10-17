@@ -7,7 +7,9 @@ const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 const ST={new:'بانتظار تأكيد المطعم',confirmed:'تم التأكيد - بانتظار الدفع',paid:'تم رفع إشعار الدفع - بانتظار تأكيده',ready:'تم تأكيد الدفع - جاري التجهيز',out:'الطلب في الطريق 🛵',done:'تم التوصيل ✅',rejected:'تم رفض الطلب ❌',adjust:'بانتظار الرد على تعديل الطلب',cancelled:'تم إلغاء الطلب'};
 const $=i=>document.getElementById(i),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-const W=window,isDrv=!!W.DRIVER,isAdm=!isDrv&&(location.hash==='#admin'||!!W.ADMIN);
+const ADMIN_EMAIL='nazar.mahammed22@gmail.com',DRIVER_EMAILS=['admin123@gmail.com'];
+const W=window,staff=!!W.DRIVER||!!W.ADMIN||location.hash==='#admin';let R=null;
+const role=u=>{const e=(u.email||'').toLowerCase();return e===ADMIN_EMAIL.toLowerCase()?'a':DRIVER_EMAILS.map(x=>x.toLowerCase()).includes(e)?'d':'x'};
 let MENU=DEF,last=null,unsub;
 const S={cart:{},name:'',phone:'',loc:null,rc:'',mine:null,orders:[],tab:'o',edit:null};W.S=S;
 function toast(m){const t=$('toast');t.textContent='🔔 '+m;t.style.display='block';clearTimeout(t.h);t.h=setTimeout(()=>t.style.display='none',5000);
@@ -16,7 +18,7 @@ try{const a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o
 const flat=c=>MENU.flatMap((m,i)=>m.o.flatMap((o,j)=>c[i+'-'+j]?[{q:c[i+'-'+j],n:o[0],p:o[1]}]:[]));
 const total=c=>flat(c).reduce((s,x)=>s+x.q*x.p,0);
 const price=n=>{for(const m of MENU)for(const x of m.o)if(x[0]===n)return x[1];return 0};
-const redraw=()=>{if(isAdm&&S.tab==='m')return;draw()};
+const redraw=()=>{if(R==='a'&&S.tab==='m')return;draw()};
 /* ---------- الزبون ---------- */
 W.chg=(k,d)=>{S.cart[k]=Math.max(0,(S.cart[k]||0)+d);draw()};
 W.getLoc=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{S.loc={lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)};draw()},()=>toast('فعّل الـ GPS وحاول تاني')):toast('الجهاز لا يدعم الموقع');
@@ -63,13 +65,13 @@ return updateDoc(ref,{st:'adjust',items:left,pr,total,removed:[...(o.removed||[]
 W.rejRc=id=>updateDoc(doc(db,'orders',id),{st:'confirmed',payNote:'إشعار الدفع غير واضح أو غير صحيح، ارفع إشعاراً جديداً'});
 W.showRc=async id=>{try{const s=await getDoc(doc(db,'receipts',id));const img=s.exists()?s.data().img:'';if(!/^data:image\//.test(img))return toast('لا يوجد إشعار');
 const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;background:#000d;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px';
-const im=document.createElement('img');im.src=img;im.style.cssText='max-width:100%;max-height:80%;border-radius:10px';const b=document.createElement('button');b.textContent='إغلاق';b.className='p';b.onclick=()=>d.remove();d.append(im,b);document.body.appendChild(d)}catch(e){toast('تعذر عرض الإشعار')}};
+const im=document.createElement('img');im.src=img;im.style.cssText='max-width:100%;max-height:80%;border-radius:10px';const b=document.createElement('button');b.textContent='إغلاق';b.className='p';b.onclick=()=>d.remove();d.append(im,b);document.body.appendChild(d)}catch(e){toast('تعذر عرض الإشعار: '+(e.code||e.message))}};
 W.delOrder=async id=>{if(!confirm('مسح الطلب نهائياً من القائمة؟'))return;try{await deleteDoc(doc(db,'orders',id));await deleteDoc(doc(db,'receipts',id))}catch(e){}};
 W.eC=(i,v)=>{S.edit[i].n=v};W.eN=(i,j,v)=>{S.edit[i].o[j][0]=v};W.eP=(i,j,v)=>{S.edit[i].o[j][1]=+v||0};
 W.eA=i=>{S.edit[i].o.push(['صنف جديد',0]);draw()};W.eD=(i,j)=>{S.edit[i].o.splice(j,1);draw()};
 W.eAC=()=>{S.edit.push({n:'قسم جديد',e:'🍽️',o:[]});draw()};W.eDC=i=>{if(confirm('حذف القسم بكل أصنافه؟')){S.edit.splice(i,1);draw()}};
 W.eSave=async()=>{const cats=S.edit.filter(m=>m.o.length).map(m=>({n:m.n,e:m.e||'',o:m.o.filter(x=>String(x[0]).trim()).map(x=>({n:String(x[0]).trim(),p:x[1]}))}));
-try{await setDoc(doc(db,'config','menu'),{cats});toast('تم حفظ القائمة ✅')}catch(e){toast('تعذر الحفظ')}};
+try{await setDoc(doc(db,'config','menu'),{cats});toast('تم حفظ القائمة ✅')}catch(e){toast('تعذر الحفظ: '+(e.code||e.message))}};
 function menuEd(){let h='<div class="mu" style="margin-bottom:8px">عدّل الاسم أو السعر، أو احذف/أضف صنف، ثم اضغط حفظ</div>';
 S.edit.forEach((m,i)=>{h+=`<div class="card"><div class="row"><input value="${esc(m.n)}" oninput="eC(${i},this.value)" style="font-weight:700"><button class="sm rm" onclick="eDC(${i})">🗑</button></div>`;
 m.o.forEach((x,j)=>{h+=`<div class="row"><input value="${esc(x[0])}" oninput="eN(${i},${j},this.value)" style="flex:2"><input type="number" inputmode="numeric" value="${+x[1]}" oninput="eP(${i},${j},this.value)" style="flex:1"><button class="sm rm" onclick="eD(${i},${j})">🗑</button></div>`});
@@ -87,12 +89,13 @@ if(o.st==='paid')h+=`<button class="full sm" style="margin-top:4px" onclick="rej
 if(o.st==='new'){h+='<div class="mu" style="margin:10px 0 4px">صنف غير متوفر؟ اضغط عليه ويُسأل الزبون هل يكمل:</div>';o.items.forEach((s,i)=>{h+=`<button class="full" style="margin:3px 0" onclick="rej('${o.id}',${i})">نفد: ${esc(s.replace(/^\d+× /,''))}</button>`});h+=`<button class="full" style="margin:3px 0" onclick="rej('${o.id}',-1)">رفض الطلب كاملاً</button>`}
 h+=`<button class="full sm rm" style="margin-top:8px" onclick="delOrder('${o.id}')">🗑 مسح الطلب من القائمة</button></div>`});return h}
 /* ---------- تشغيل ---------- */
-W.draw=draw;function draw(){$('app').innerHTML=isDrv?drv(auth.currentUser):isAdm?adm(auth.currentUser):cust()}
-onSnapshot(doc(db,'config','menu'),s=>{if(s.exists()&&s.data().cats){MENU=s.data().cats.map(c=>({n:c.n,e:c.e||'',o:(c.o||[]).map(x=>[x.n,x.p])}));if(!isAdm&&!isDrv)S.cart={}}redraw()},()=>{});
-if(isAdm||isDrv){let first=true,ou;onAuthStateChanged(auth,u=>{if(ou){ou();ou=null}first=true;S.orders=[];draw();if(!u)return;
-const q=isDrv?query(collection(db,'orders'),where('st','in',['ready','out'])):query(collection(db,'orders'),orderBy('created','desc'));
+W.draw=draw;function draw(){const u=auth.currentUser;R=u?role(u):null;
+$('app').innerHTML=!staff?cust():!u?login('تسجيل الدخول'):R==='a'?adm(u):R==='d'?drv(u):'<div class="card">هذا الحساب غير مصرح له بالدخول<br><button class="full" style="margin-top:8px" onclick="out()">خروج</button></div>'}
+onSnapshot(doc(db,'config','menu'),s=>{if(s.exists()&&s.data().cats){MENU=s.data().cats.map(c=>({n:c.n,e:c.e||'',o:(c.o||[]).map(x=>[x.n,x.p])}));if(!staff)S.cart={}}redraw()},()=>{});
+if(staff){let first=true,ou;onAuthStateChanged(auth,u=>{if(ou){ou();ou=null}first=true;S.orders=[];draw();if(!u||R==='x')return;
+const q=R==='d'?query(collection(db,'orders'),where('st','in',['ready','out'])):query(collection(db,'orders'),orderBy('created','desc'));
 ou=onSnapshot(q,s=>{if(!first)s.docChanges().forEach(c=>{const d=c.doc.data();
-if(isDrv){if(c.type==='added')toast('طلب جديد للتوصيل: '+d.name)}
+if(R==='d'){if(c.type==='added')toast('طلب جديد للتوصيل: '+d.name)}
 else{if(c.type==='added')toast('طلب جديد من '+d.name);if(c.type==='modified'){if(d.st==='paid')toast('الزبون رفع إشعار الدفع: '+d.name);if(d.st==='new')toast('الزبون وافق على الطلب المعدل: '+d.name);if(d.st==='cancelled')toast('الزبون ألغى الطلب: '+d.name);if(d.st==='out')toast('المندوب استلم طلب '+d.name);if(d.st==='done')toast('تم توصيل طلب '+d.name)}}});
-first=false;S.orders=s.docs.map(x=>({id:x.id,...x.data()}));if(isDrv)S.orders.sort((a,b)=>(a.created?.seconds||0)-(b.created?.seconds||0));redraw()},()=>toast('لا توجد صلاحية لهذا الحساب'))})}
+first=false;S.orders=s.docs.map(x=>({id:x.id,...x.data()}));if(R==='d')S.orders.sort((a,b)=>(a.created?.seconds||0)-(b.created?.seconds||0));redraw()},e=>toast('لا توجد صلاحية: '+(e.code||'')))})}
 else{if(localStorage.oid)watch(localStorage.oid);draw()}
