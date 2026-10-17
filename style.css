@@ -9,3 +9,5 @@ input{width:100%;padding:10px;margin:4px 0;border:1px solid var(--bd);border-rad
 .mu{color:var(--mu);font-size:13px}.tag{padding:2px 10px;border-radius:99px;background:var(--bd);font-size:13px}.ok{color:var(--ok)}a{color:var(--ac)}.full{width:100%}
 #toast{position:fixed;top:10px;inset-inline:12px;max-width:496px;margin-inline:auto;background:var(--ac);color:var(--ac2);padding:12px;border-radius:12px;display:none;z-index:9}
 header{display:flex;align-items:center;gap:12px}header img{width:72px;height:72px;border-radius:50%;border:2px solid var(--ac)}
+.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1}.tabs .on{background:var(--ac);color:var(--ac2);border-color:var(--ac)}
+.sm{padding:6px 10px;font-size:13px}.rm{color:#ff9d9d}
