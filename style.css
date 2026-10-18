@@ -1,3 +1,4 @@
+
 :root{--bg:#083a52;--card:#0d4f6e;--tx:#fff;--mu:#a9cfe0;--ac:#f5e11a;--ac2:#0a2f42;--bd:#1b6a8c;--ok:#7be0a4}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,Tahoma,sans-serif;max-width:520px;margin-inline:auto;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 40px}
 h2{font-size:16px;margin:16px 0 8px}button,input{font:inherit}
@@ -16,11 +17,12 @@ header{display:flex;align-items:center;gap:12px}header img{width:72px;height:72p
  body{max-width:1180px;padding:24px 32px 60px;font-size:17px}
  header img{width:96px;height:96px}
  h2{font-size:20px}
- #app{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start}
+ header{justify-content:center}
+ #app{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,460px));justify-content:center;gap:16px;align-items:start}
  #app>h2,#app>.tabs,#app>.mu,#app>.row{grid-column:1/-1}
  #app>.card{margin-bottom:0}
  #app>.card:has(input){grid-column:1/-1;width:100%;max-width:640px;justify-self:center}
  #app>.tabs~.card:has(input){grid-column:auto;max-width:none;justify-self:stretch}
- #app>.tabs{max-width:520px}
+ #app>.tabs{width:100%;max-width:520px;justify-self:center}
 }
 @media (min-width:1400px){body{max-width:1400px}}
