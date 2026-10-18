@@ -11,3 +11,16 @@ input{width:100%;padding:10px;margin:4px 0;border:1px solid var(--bd);border-rad
 header{display:flex;align-items:center;gap:12px}header img{width:72px;height:72px;border-radius:50%;border:2px solid var(--ac)}
 .tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1}.tabs .on{background:var(--ac);color:var(--ac2);border-color:var(--ac)}
 .sm{padding:6px 10px;font-size:13px}.rm{color:#ff9d9d}
+/* ===== شاشات الكمبيوتر والتابلت ===== */
+@media (min-width:860px){
+ body{max-width:1180px;padding:24px 32px 60px;font-size:17px}
+ header img{width:96px;height:96px}
+ h2{font-size:20px}
+ #app{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start}
+ #app>h2,#app>.tabs,#app>.mu,#app>.row{grid-column:1/-1}
+ #app>.card{margin-bottom:0}
+ #app>.card:has(input){grid-column:1/-1;width:100%;max-width:640px;justify-self:center}
+ #app>.tabs~.card:has(input){grid-column:auto;max-width:none;justify-self:stretch}
+ #app>.tabs{max-width:520px}
+}
+@media (min-width:1400px){body{max-width:1400px}}
