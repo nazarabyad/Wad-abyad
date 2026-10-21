@@ -10,7 +10,8 @@ const $=i=>document.getElementById(i),esc=s=>String(s??'').replace(/[&<>"']/g,c=
 const ADMIN_EMAIL='nazar.mahammed22@gmail.com',DRIVER_EMAILS=['admin123@gmail.com'];
 const W=window,staff=!!W.DRIVER||!!W.ADMIN||location.hash==='#admin';let R=null;
 const role=u=>{const e=(u.email||'').toLowerCase();return e===ADMIN_EMAIL.toLowerCase()?'a':DRIVER_EMAILS.map(x=>x.toLowerCase()).includes(e)?'d':'x'};
-let MENU=DEF,last=null,unsub,DLV=null;
+const DEF_DLV={lat:19.536152,lng:33.334129,perKm:2000,factor:1.3};
+let MENU=DEF,last=null,unsub,DLV=DEF_DLV;
 const S={cart:{},name:'',phone:'',loc:null,rc:'',mine:null,orders:[],tab:'o',edit:null};W.S=S;
 function toast(m){const t=$('toast');t.textContent='🔔 '+m;t.style.display='block';clearTimeout(t.h);t.h=setTimeout(()=>t.style.display='none',5000);
 try{if(Notification.permission==='granted')new Notification('الحاج مقام',{body:m})}catch(e){}
@@ -98,9 +99,9 @@ if(o.st==='new'){h+='<div class="mu" style="margin:10px 0 4px">صنف غير م�
 h+=`<button class="full sm rm" style="margin-top:8px" onclick="delOrder('${o.id}')">🗑 مسح الطلب من القائمة</button></div>`});return h}
 /* ---------- تشغيل ---------- */
 W.draw=draw;function draw(){const u=auth.currentUser;R=u?role(u):null;
-$('app').innerHTML=(!staff?cust():!u?login('تسجيل الدخول'):R==='a'?adm(u):R==='d'?drv(u):'<div class="card">هذا الحساب غير مصرح له بالدخول<br><button class="full" style="margin-top:8px" onclick="out()">خروج</button></div>')+'<div class="mu" style="text-align:center;margin-top:24px;font-size:11px">v7 · '+(staff?(R||'-'):'c')+'</div>'}
+$('app').innerHTML=(!staff?cust():!u?login('تسجيل الدخول'):R==='a'?adm(u):R==='d'?drv(u):'<div class="card">هذا الحساب غير مصرح له بالدخول<br><button class="full" style="margin-top:8px" onclick="out()">خروج</button></div>')+'<div class="mu" style="text-align:center;margin-top:24px;font-size:11px">v9 · '+(staff?(R||'-'):'c')+'</div>'}
 onSnapshot(doc(db,'config','menu'),s=>{if(s.exists()&&s.data().cats){MENU=s.data().cats.map(c=>({n:c.n,e:c.e||'',o:(c.o||[]).map(x=>[x.n,x.p])}));if(!staff)S.cart={}}redraw()},()=>{});
-onSnapshot(doc(db,'config','delivery'),s=>{DLV=s.exists()?s.data():null;redraw()},()=>{});
+onSnapshot(doc(db,'config','delivery'),s=>{DLV=s.exists()?s.data():DEF_DLV;redraw()},()=>{});
 if(staff){let first=true,ou;onAuthStateChanged(auth,u=>{if(ou){ou();ou=null}first=true;S.orders=[];draw();if(!u||R==='x')return;
 const q=R==='d'?query(collection(db,'orders'),where('st','in',['ready','out'])):query(collection(db,'orders'),orderBy('created','desc'));
 ou=onSnapshot(q,s=>{if(!first)s.docChanges().forEach(c=>{const d=c.doc.data();
